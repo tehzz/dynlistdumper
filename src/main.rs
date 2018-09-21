@@ -62,6 +62,12 @@ impl DynList {
             _ => false,
         }
     }
+    fn is_unk(&self) -> bool {
+        match self.cmd {
+            DynCmd::Unk(_) => true,
+            _ => false,
+        }
+    }
 }
 
 fn run(opts: Opts) -> Result<(),Error> {
@@ -79,6 +85,7 @@ fn run(opts: Opts) -> Result<(),Error> {
         println!("cmd {}: {:x?}", i, &dyncmd);
         i+=1;
         if dyncmd.is_end() { break; }
+        else if dyncmd.is_unk() { bail!("unknown dynlist command..?"); }
     }
     
     println!("Finished reading list");
