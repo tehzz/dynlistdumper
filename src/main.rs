@@ -1,17 +1,14 @@
 #[macro_use] extern crate failure;
 #[macro_use] extern crate structopt;
 extern crate byteorder;
-
 use structopt::StructOpt;
 use failure::{Error, ResultExt};
-use byteorder::{ByteOrder, BE};
 
-mod cmd;
-
-use cmd::DynCmd;
+mod dynlist;
+use dynlist::{DynListIter};
 
 use std::path::PathBuf;
-use std::io::{Read, BufReader, Seek, SeekFrom};
+use std::io::{BufReader};
 use std::fs::{File};
 use std::num::ParseIntError;
 
@@ -43,49 +40,21 @@ fn main() {
     }
 }
 
-#[derive(Debug)]
-struct DynList {
-    cmd: DynCmd,
-    raw: [u32; 6],
-}
-
-impl DynList {
-    fn from_bytes(buf: &[u8; 24]) -> Self {
-        let mut raw = [0; 6];
-        BE::read_u32_into(buf, &mut raw);
-        let cmd = DynCmd::from_struct(&raw);
-        DynList{raw, cmd}
-    }
-    fn is_end(&self) -> bool {
-        match self.cmd {
-            DynCmd::Stop => true,
-            _ => false,
-        }
-    }
-    fn is_unk(&self) -> bool {
-        match self.cmd {
-            DynCmd::Unk(_) => true,
-            _ => false,
-        }
-    }
-}
 
 fn run(opts: Opts) -> Result<(),Error> {
-    let mut buf = [0; 24];
-    let file = File::open(opts.input).context("opening input binary file")?;
-    let mut rdr = BufReader::new(file);
-    let offset = opts.offset.as_ref().map(hex_or_dec).unwrap_or(Ok(0))
+    let f = File::open(opts.input).context("opening input binary file")?;
+    let rdr = BufReader::new(f);
+
+    let offset = opts.offset.as_ref()
+        .map(hex_or_dec)
+        .unwrap_or(Ok(0))
         .context("parsing offset into integer")?;
-    rdr.seek(SeekFrom::Start(offset)).context("seeking to offset")?;
-    // make an iterator...?
-    let mut i = 0;
-    loop {
-        rdr.read_exact(&mut buf).context("reading 24 bytes from input")?;
-        let dyncmd = DynList::from_bytes(&buf);
-        println!("cmd {}: {:x?}", i, &dyncmd);
-        i+=1;
-        if dyncmd.is_end() { break; }
-        else if dyncmd.is_unk() { bail!("unknown dynlist command..?"); }
+    let dynlist = DynListIter::from_reader(rdr, offset).context("generating iterator")?;
+
+    for (i, cmd) in dynlist.enumerate() {
+        let cmd = cmd.context("reading dynlist iterator")?;
+        println!("cmd {}: {:x?}", i, &cmd);
+        if cmd.is_unk() { bail!("unknown dynlist command..?") }; 
     }
     
     println!("Finished reading list");
