@@ -30,7 +30,7 @@ struct Opts {
 
 fn main() {
     let opts = Opts::from_args();
-    println!("opts\n{:#?}", opts);
+    println!("{:#?}", opts);
     if let Err(e) = run(opts) {
         eprintln!("Error: {}", e);
         for c in e.iter_causes() {

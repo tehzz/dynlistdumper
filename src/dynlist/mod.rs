@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, BE};
 use std::io::{self, Read, Seek, SeekFrom};
 
 mod cmd;
+mod dobj_types;
 use self::cmd::DynCmd;
 
 #[derive(Debug)]
