@@ -12,9 +12,24 @@ use std::io::{BufReader};
 use std::fs::{File};
 use std::num::ParseIntError;
 
-/// Dump a binary SM64 head screen dynlist into a set of asm macros
+/// A tool to help dump a binary SM64 head screen dynlist into a set of asm macros
 #[derive(Debug, StructOpt)]
-struct Opts {
+enum Opts {
+    /// Dump a binary dynlist into a list of gas macros
+    #[structopt(name="dump")]
+    Dump(Dump),
+    /// Create the set of gas macros needed for assembling a dumped dynlist
+    #[structopt(name="asm")]
+    ASM {
+        #[structopt(parse(from_os_str))]
+        /// output file, or stdout if not present
+        output: Option<PathBuf>,
+    }
+}
+
+/// Dump a binary dynlist into a list of gas macros
+#[derive(Debug, StructOpt)]
+struct Dump {
     /// input binary file to read dynlist from
     #[structopt(parse(from_os_str))]
     input: PathBuf,
@@ -30,7 +45,7 @@ struct Opts {
 
 fn main() {
     let opts = Opts::from_args();
-    println!("{:#?}", opts);
+    //println!("{:#?}", opts);
     if let Err(e) = run(opts) {
         eprintln!("Error: {}", e);
         for c in e.iter_causes() {
@@ -42,6 +57,13 @@ fn main() {
 
 
 fn run(opts: Opts) -> Result<(),Error> {
+    match opts {
+        Opts::Dump(dump) => dump_dynlist(dump),
+        Opts::ASM{output} => produce_asm_macros(output),
+    }
+}
+
+fn dump_dynlist(opts: Dump) -> Result<(), Error> {
     let f = File::open(opts.input).context("opening input binary file")?;
     let rdr = BufReader::new(f);
 
@@ -53,11 +75,21 @@ fn run(opts: Opts) -> Result<(),Error> {
 
     for (i, cmd) in dynlist.enumerate() {
         let cmd = cmd.context("reading dynlist iterator")?;
-        println!("cmd {}: {:x?}", i, &cmd);
+        if opts.raw {
+            println!("cmd {}: {:x?}", i, &cmd);
+        } else {
+            println!("cmd {}: {}", i, &cmd);
+        }
         if cmd.is_unk() { bail!("unknown dynlist command..?") }; 
     }
     
     println!("Finished reading list");
+    Ok(())
+}
+
+fn produce_asm_macros(out: Option<PathBuf>) -> Result<(), Error> {
+    println!("making asm macros: {:?}", out);
+
     Ok(())
 }
 
