@@ -1,14 +1,21 @@
 use byteorder::{ByteOrder, BE};
 use std::io::{self, Read, Seek, SeekFrom};
+use std::fmt;
 
 mod cmd;
 mod dobj_types;
-use self::cmd::DynCmd;
+pub use self::cmd::{DynCmd, CmdInfo, DynArg};
 
 #[derive(Debug)]
 pub struct DynListItem  {
     cmd: DynCmd,
     raw: [u32; 6],
+}
+
+impl fmt::Display for DynListItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.cmd)
+    }
 }
 
 impl DynListItem  {

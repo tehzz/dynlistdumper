@@ -4,12 +4,13 @@ extern crate byteorder;
 use structopt::StructOpt;
 use failure::{Error, ResultExt};
 
+mod asm;
 mod dynlist;
 use dynlist::{DynListIter};
 
 use std::path::PathBuf;
-use std::io::{BufReader};
-use std::fs::{File};
+use std::io::{self, BufReader, BufWriter, Write};
+use std::fs::{File, OpenOptions};
 use std::num::ParseIntError;
 
 /// A tool to help dump a binary SM64 head screen dynlist into a set of asm macros
@@ -88,8 +89,20 @@ fn dump_dynlist(opts: Dump) -> Result<(), Error> {
 }
 
 fn produce_asm_macros(out: Option<PathBuf>) -> Result<(), Error> {
-    println!("making asm macros: {:?}", out);
-
+    let wtr = BufWriter::new(
+        if let Some(f) = out {
+            let f = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(f)?;
+            Box::new(f) as Box<Write>
+        } else {
+            Box::new(io::stdout()) as Box<Write>
+        }
+    );
+    
+    asm::write_macros(wtr)?;
     Ok(())
 }
 
