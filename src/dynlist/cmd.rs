@@ -22,6 +22,9 @@ impl fmt::Display for DynId {
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Vector{ x: f32, y: f32, z: f32 }
+impl Vector {
+    const ZERO: Vector = Vector{x: 0.0, y: 0.0, z: 0.0};
+}
 impl fmt::Display for Vector {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Vec<{},{},{}>", self.x, self.y, self.z)
@@ -105,12 +108,12 @@ impl DynCmd {
         [ 
             Start, Stop,
             UseIntId(false), 
-            SetInitPos(Vector{x: 0.0,y: 0.0,z: 0.0}),
-            SetRelPos(Vector{x: 0.0,y: 0.0,z: 0.0}),
-            SetWorldPos(Vector{x: 0.0,y: 0.0,z: 0.0}),
-            SetNormal(Vector{x: 0.0,y: 0.0,z: 0.0}),
-            SetScale(Vector{x: 0.0,y: 0.0,z: 0.0}),
-            SetRotation(Vector{x: 0.0,y: 0.0,z: 0.0}),
+            SetInitPos(Vector::ZERO),
+            SetRelPos(Vector::ZERO),
+            SetWorldPos(Vector::ZERO),
+            SetNormal(Vector::ZERO),
+            SetScale(Vector::ZERO),
+            SetRotation(Vector::ZERO),
         ].into_iter()
         .map(|c| c.info())
     }
