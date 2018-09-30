@@ -20,8 +20,25 @@ impl fmt::Display for DynId {
     }
 }
 
+#[derive(Debug, Default, Copy, Clone)]
+pub struct Vector{ x: f32, y: f32, z: f32 }
+impl fmt::Display for Vector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Vec<{},{},{}>", self.x, self.y, self.z)
+    }
+}
+impl<'a> From<&'a [u32]> for Vector {
+    fn from(arr: &[u32]) -> Self {
+        assert!(arr.len() >= 3);
+        let x = f32::from_bits(arr[0]);
+        let y = f32::from_bits(arr[1]);
+        let z = f32::from_bits(arr[2]);
+        Vector{x, y, z}
+    }
+}
+
 /// How the arguments are used
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DynArg {
     Void,
     First,
@@ -47,6 +64,12 @@ pub enum DynCmd {
     Start,
     Stop,
     UseIntId(bool),
+    SetInitPos(Vector),
+    SetRelPos(Vector),
+    SetWorldPos(Vector),
+    SetNormal(Vector),
+    SetScale(Vector),
+    SetRotation(Vector),
     Jump(Ptr),
     MakeObj(DObjType, DynId),
     StartGroup(DynId),
@@ -62,6 +85,12 @@ impl DynCmd {
             0xD1D4 => Start,
             58 => Stop,
             0  => UseIntId(cmd[2] != 0),
+            1  => SetInitPos(cmd[3..6].into()),
+            2  => SetRelPos(cmd[3..6].into()),
+            3  => SetWorldPos(cmd[3..6].into()),
+            4  => SetNormal(cmd[3..6].into()),
+            5  => SetScale(cmd[3..6].into()),
+            6  => SetRotation(cmd[3..6].into()),
             12 => Jump(Ptr(cmd[1])),
             15 => MakeObj(cmd[2].into(), DynId(cmd[1])),
             16 => StartGroup(DynId(cmd[1])),
@@ -70,15 +99,22 @@ impl DynCmd {
             u @ _ => Unk(u),
         }
     }
-    /// Create an iterator over the real variants of the DynCmd enum
+    /// Create an iterator over the real/necessary variants of the DynCmd enum
     pub fn variants() -> impl Iterator<Item=CmdInfo> {
         use self::DynCmd::*;
         [ 
             Start, Stop,
             UseIntId(false), 
+            SetInitPos(Vector{x: 0.0,y: 0.0,z: 0.0}),
+            SetRelPos(Vector{x: 0.0,y: 0.0,z: 0.0}),
+            SetWorldPos(Vector{x: 0.0,y: 0.0,z: 0.0}),
+            SetNormal(Vector{x: 0.0,y: 0.0,z: 0.0}),
+            SetScale(Vector{x: 0.0,y: 0.0,z: 0.0}),
+            SetRotation(Vector{x: 0.0,y: 0.0,z: 0.0}),
         ].into_iter()
         .map(|c| c.info())
     }
+    /// Basic info for a command
     fn info(&self) -> CmdInfo {
         use self::DynCmd::*;
         use self::DynArg::*;
@@ -100,6 +136,42 @@ impl DynCmd {
                 desc: "Subsequent dynobj ids should be treated as ints, not as c-string pointers.",
                 kind: Second,
                 id: 0,
+            },
+            SetInitPos(..) => CmdInfo {
+                base: "SetInitialPosition",
+                desc: "Set the initial position of the current object",
+                kind: VecXYZ,
+                id: 1,
+            },
+            SetRelPos(..) => CmdInfo {
+                base: "SetRelativePosition",
+                desc: "Set the relative position of the current object",
+                kind: VecXYZ,
+                id: 2,
+            },
+            SetWorldPos(..) => CmdInfo {
+                base: "SetWorldPosition",
+                desc: "Set the world position of the current object",
+                kind: VecXYZ,
+                id: 3,
+            },
+            SetNormal(..) => CmdInfo {
+                base: "SetNormal",
+                desc: "Set the normal of the current object",
+                kind: VecXYZ,
+                id: 4,
+            },
+            SetScale(..) => CmdInfo {
+                base: "SetScale",
+                desc: "Set the scale of the current object",
+                kind: VecXYZ,
+                id: 5,
+            },
+            SetRotation(..) => CmdInfo {
+                base: "SetRotation",
+                desc: "Set the rotation of the current object",
+                kind: VecXYZ,
+                id: 6,
             },
             Jump(..) => CmdInfo {
                 base: "JumpToList",
@@ -149,6 +221,12 @@ impl fmt::Display for DynCmd {
             Start => void_macro(f, info.base),
             Stop => void_macro(f, info.base),
             UseIntId(b) => one_param(f, info.base, if *b {"TRUE"} else {"FALSE"}),
+            SetInitPos(vec) => full_vec(f, info.base, vec),
+            SetRelPos(vec) => full_vec(f, info.base, vec),
+            SetWorldPos(vec) => full_vec(f, info.base, vec),
+            SetNormal(vec) => full_vec(f, info.base, vec),
+            SetScale(vec) => full_vec(f, info.base, vec),
+            SetRotation(vec) => full_vec(f, info.base, vec),
             Jump(dl) => one_param(f, info.base, dl),
             MakeObj(t, id) => two_param(f, info.base, t, id),
             StartGroup(id) => one_param(f, info.base, id),
@@ -159,7 +237,7 @@ impl fmt::Display for DynCmd {
     }
 }
 
-/* Helper function to write a command as a macro */
+/* Helper functions to write a command as a macro */
 #[inline]
 fn void_macro(f: &mut fmt::Formatter, name: &str) -> fmt::Result {
     write!(f, "{}", name)
@@ -168,11 +246,13 @@ fn void_macro(f: &mut fmt::Formatter, name: &str) -> fmt::Result {
 fn one_param<D: fmt::Display> (f: &mut fmt::Formatter, name: &str, param: D) -> fmt::Result {
     write!(f, "{} {}", name, param)
 }
-
 #[inline]
 fn two_param<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, p2: E) -> fmt::Result 
-where D: fmt::Display,
-      E: fmt::Display
+    where D: fmt::Display, E: fmt::Display
 {
     write!(f, "{} {}, {}", name, p1, p2)
+}
+#[inline]
+fn full_vec(f: &mut fmt::Formatter, name: &str, vec: &Vector) -> fmt::Result {
+    write!(f, "{} {:?}, {:?}, {:?}", name, vec.x, vec.y, vec.z)
 }

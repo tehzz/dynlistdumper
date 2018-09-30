@@ -7,7 +7,7 @@ const PRELUDE: &'static str = r#"
 .set FALSE, 0
 .set NULL, 0
 
-# Helper macro to with all unnecessary fields set to their default
+# Helper macro that has all unnecessary fields set to a default value
 .macro DynListCmd cmd, w1=0, w2=0, f1=0.0, f2=0.0, f3=0.0,
     .4byte \cmd, \w1, \w2
     .float \f1, \f2, \f3
@@ -54,7 +54,7 @@ r#".macro {} w1
 
         Second => write!(w,
 r#".macro {} w2
-    {} {}, , \w2
+    {} {},, \w2
 .endm"#, cmd.base, BASEMAC, cmd.id),
 
         Both => write!(w,
@@ -69,7 +69,7 @@ r#".macro {} w1, w2
 
         VecXYZ | Vector  => write!(w,
 r#".macro {} x, y, z
-    {} {}, , , x, y, z
+    {} {},,, x, y, z
 .endm"#, cmd.base, BASEMAC, cmd.id), 
     }
 }
