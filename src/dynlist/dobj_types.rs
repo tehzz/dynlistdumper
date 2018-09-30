@@ -1,3 +1,5 @@
+use std::{fmt};
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum DObjType {
@@ -20,6 +22,20 @@ pub enum DObjType {
     D_PARTICLE      = 16,
     D_LIGHT         = 17,
     D_GROUP         = 18,
+}
+
+impl DObjType {
+    const TOTAL: u32 = 19;
+
+    pub fn iter() -> impl Iterator<Item = DObjType> {
+        (0..DObjType::TOTAL).map(|i| i.into())
+    }
+}
+
+impl fmt::Display for DObjType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl From<u32> for DObjType {

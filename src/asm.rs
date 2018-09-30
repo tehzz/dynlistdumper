@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use dynlist::{DynCmd, CmdInfo, DynArg};
+use dynlist::{DynCmd, CmdInfo, DynArg, DObjType};
 
 const PRELUDE: &'static str = r#"
 # Bool Types
@@ -7,7 +7,7 @@ const PRELUDE: &'static str = r#"
 .set FALSE, 0
 .set NULL, 0
 
-# Helper macro to write an empty command
+# Helper macro to with all unnecessary fields set to their default
 .macro DynListCmd cmd, w1=0, w2=0, f1=0.0, f2=0.0, f3=0.0,
     .4byte \cmd, \w1, \w2
     .float \f1, \f2, \f3
@@ -19,13 +19,23 @@ const BASEMAC: &'static str = "DynListCmd";
 /// an include file that can be used to assemble a dynlist
 pub fn write_macros<W: Write>(mut w: W) -> Result<(), io::Error> {
     writeln!(w, "{}", PRELUDE)?;
-
+    write_dobj_constants(&mut w)?;
+    writeln!(w, "\n# DynList Command Macros #\n")?;
     for info in DynCmd::variants() {
         writeln!(w, "# {}", info.desc)?;
         write_cmd_macro(&mut w, &info)?;
         write!(w, "\n\n");
     }
 
+    Ok(())
+}
+
+/// Hacky function to write all 19 of the dyn object type enum
+fn write_dobj_constants<W: Write>(w: &mut W) -> Result<(), io::Error> {
+    writeln!(w, "# Object type constants for dynlist make object command")?;
+    for (val, constant) in DObjType::iter().enumerate() {
+        writeln!(w, ".set {}, {}", constant, val)?;
+    }
     Ok(())
 }
 
@@ -61,7 +71,5 @@ r#".macro {} w1, w2
 r#".macro {} x, y, z
     {} {}, , , x, y, z
 .endm"#, cmd.base, BASEMAC, cmd.id), 
-
-        _ => write!(w, "no macro yet"),
     }
 }

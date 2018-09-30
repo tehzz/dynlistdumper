@@ -146,15 +146,33 @@ impl fmt::Display for DynCmd {
         use self::DynCmd::*;
         let info = self.info();
         match self {
-            Start => write!(f, "{}", info.base),
-            Stop => write!(f, "{}", info.base),
-            UseIntId(b) => write!(f, "{} {}", info.base, if *b {"TRUE"} else {"FALSE"}),
-            Jump(dl) => write!(f, "{} {}", info.base, dl),
-            MakeObj(t, id) => write!(f, "{} {:?}, {}", info.base, t, id),
-            StartGroup(id) => write!(f, "{} {}", info.base, id),
-            EndGroup(id) => write!(f, "{} {}", info.base, id),
+            Start => void_macro(f, info.base),
+            Stop => void_macro(f, info.base),
+            UseIntId(b) => one_param(f, info.base, if *b {"TRUE"} else {"FALSE"}),
+            Jump(dl) => one_param(f, info.base, dl),
+            MakeObj(t, id) => two_param(f, info.base, t, id),
+            StartGroup(id) => one_param(f, info.base, id),
+            EndGroup(id) => one_param(f, info.base, id),
             Known(cmd) => write!(f, "Known cmd <{}>", cmd),
             Unk(val) => write!(f, "Unknown cmd <{}>", val),
         }
     }
+}
+
+/* Helper function to write a command as a macro */
+#[inline]
+fn void_macro(f: &mut fmt::Formatter, name: &str) -> fmt::Result {
+    write!(f, "{}", name)
+}
+#[inline]
+fn one_param<D: fmt::Display> (f: &mut fmt::Formatter, name: &str, param: D) -> fmt::Result {
+    write!(f, "{} {}", name, param)
+}
+
+#[inline]
+fn two_param<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, p2: E) -> fmt::Result 
+where D: fmt::Display,
+      E: fmt::Display
+{
+    write!(f, "{} {}, {}", name, p1, p2)
 }

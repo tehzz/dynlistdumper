@@ -5,6 +5,7 @@ use std::fmt;
 mod cmd;
 mod dobj_types;
 pub use self::cmd::{DynCmd, CmdInfo, DynArg};
+pub use self::dobj_types::DObjType;
 
 #[derive(Debug)]
 pub struct DynListItem  {
