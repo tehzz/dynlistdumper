@@ -1,14 +1,14 @@
 use std::io::{self, Write};
 use dynlist::{DynCmd, CmdInfo, DynArg, DObjType};
 
-const PRELUDE: &'static str = r#"
+const PRELUDE: &'static str = r#"# DynList GNU AS Macros
 # Bool Types
 .set TRUE, 1
 .set FALSE, 0
 .set NULL, 0
 
 # Helper macro that has all unnecessary fields set to a default value
-.macro DynListCmd cmd, w1=0, w2=0, f1=0.0, f2=0.0, f3=0.0,
+.macro DynListCmd cmd, w1=0, w2=0, f1=0.0, f2=0.0, f3=0.0
     .4byte \cmd, \w1, \w2
     .float \f1, \f2, \f3
 .endm
@@ -69,7 +69,7 @@ r#".macro {} w1, w2
 
         VecXYZ | Vector  => write!(w,
 r#".macro {} x, y, z
-    {} {},,, x, y, z
+    {} {},,, \x, \y, \z
 .endm"#, cmd.base, BASEMAC, cmd.id), 
     }
 }
