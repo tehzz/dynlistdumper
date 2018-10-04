@@ -1,5 +1,6 @@
 #[macro_use] extern crate failure;
 #[macro_use] extern crate structopt;
+#[macro_use] extern crate bitflags;
 extern crate byteorder;
 use structopt::StructOpt;
 use failure::{Error, ResultExt};
@@ -72,10 +73,10 @@ fn dump_dynlist(opts: Dump) -> Result<(), Error> {
         .map(hex_or_dec)
         .unwrap_or(Ok(0))
         .context("parsing offset into integer")?;
-    let dynlist = DynListIter::from_reader(rdr, offset).context("generating iterator")?;
+    let dynlist = DynListIter::from_reader(rdr, offset).context("generating dynlist iterator")?;
 
     for (i, cmd) in dynlist.enumerate() {
-        let cmd = cmd.context("reading dynlist iterator")?;
+        let cmd = cmd.context("reading command from dynlist iterator")?;
         if opts.raw {
             println!("cmd {}: {:x?}", i, &cmd);
         } else {

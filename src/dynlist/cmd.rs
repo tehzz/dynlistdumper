@@ -1,5 +1,6 @@
 use std::fmt;
 use dynlist::dobj_types::DObjType;
+use dynlist::objs;
 
 /// This is used by the game as a pointer, so be able to indicate it
 #[derive(Debug)]
@@ -58,6 +59,7 @@ pub struct CmdInfo {
     pub base: &'static str,
     pub desc: &'static str,
     pub kind: DynArg,
+    pub objs: objs::ObjFlag,    // which, if any, object types this command can act on
     pub id: u32,
 }
 
@@ -121,95 +123,111 @@ impl DynCmd {
     fn info(&self) -> CmdInfo {
         use self::DynCmd::*;
         use self::DynArg::*;
+        use self::objs::ObjFlag as O;
         match self {
             Start => CmdInfo {
                 base: "StartList",
                 desc: "Necessary start command for the dynlist. List will not process otherwise.",
                 kind: Void,
+                objs: O::empty(),
                 id: 0xD1D4,
             },
             Stop => CmdInfo {
                 base: "StopList",
                 desc: "Necessary stop command for the dynlist.",
                 kind: Void,
+                objs: O::empty(),
                 id: 58,
             },
             UseIntId(..) => CmdInfo {
                 base: "UseIntId",
-                desc: "Subsequent dynobj ids should be treated as ints, not as c-string pointers.",
+                desc: "Subsequent dynobj ids should be treated as ints, not as C string pointers.",
                 kind: Second,
+                objs: O::empty(),
                 id: 0,
             },
             SetInitPos(..) => CmdInfo {
                 base: "SetInitialPosition",
                 desc: "Set the initial position of the current object",
                 kind: VecXYZ,
+                objs: O::JOINTS | O::NETS | O::PARTICLES | O::CAMERAS | O::VERTICES,
                 id: 1,
             },
             SetRelPos(..) => CmdInfo {
                 base: "SetRelativePosition",
                 desc: "Set the relative position of the current object",
                 kind: VecXYZ,
+                objs: O::JOINTS | O::LABELS | O::PARTICLES | O::CAMERAS | O::VERTICES,
                 id: 2,
             },
             SetWorldPos(..) => CmdInfo {
                 base: "SetWorldPosition",
                 desc: "Set the world position of the current object",
                 kind: VecXYZ,
+                objs: O::JOINTS | O::NETS | O::GADGETS | O::VIEWS | O::CAMERAS | O::VERTICES,
                 id: 3,
             },
             SetNormal(..) => CmdInfo {
                 base: "SetNormal",
                 desc: "Set the normal of the current object",
                 kind: VecXYZ,
+                objs: O::VERTICES,
                 id: 4,
             },
             SetScale(..) => CmdInfo {
                 base: "SetScale",
                 desc: "Set the scale of the current object",
                 kind: VecXYZ,
+                objs: O::JOINTS | O::NETS | O::VIEWS | O::PARTICLES | O::GADGETS | O::LIGHTS,
                 id: 5,
             },
             SetRotation(..) => CmdInfo {
                 base: "SetRotation",
                 desc: "Set the rotation of the current object",
                 kind: VecXYZ,
+                objs: O::JOINTS | O::NETS,
                 id: 6,
             },
             Jump(..) => CmdInfo {
                 base: "JumpToList",
                 desc: "Jump to pointed dynlist. Once that list has finished processing, flow returns to current list.",
                 kind: First,
+                objs: O::empty(),
                 id: 12,
             },
             MakeObj(..) => CmdInfo {
                 base: "MakeDynObj",
                 desc: "Make an object of the specified type and id, and add that object to the dynobj pool.",
                 kind: SwapBoth,
+                objs: O::empty(),
                 id: 15,
             },
             StartGroup(..) => CmdInfo {
                 base: "StartGroup",
                 desc: "Make a group object that will contain all subsequently created objects once the EndGroup command is called.",
                 kind: First,
+                objs: O::empty(),
                 id: 16,
             },
             EndGroup(..) => CmdInfo {
                 base: "EndGroup",
                 desc: "Collect all objects created after the StartGroup command.",
                 kind: First,
+                objs: O::GROUPS,
                 id: 17,
             },
             Known(id) => CmdInfo {
                 base: "Known",
                 desc: "Filler until all commands are known.",
                 kind: First,
+                objs: O::empty(),
                 id: *id,
             },
             Unk(id) => CmdInfo {
                 base: "Unknown",
                 desc: "N/A",
                 kind: Void,
+                objs: O::empty(),                
                 id: *id,
             },
         }
