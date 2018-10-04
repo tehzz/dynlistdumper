@@ -75,6 +75,7 @@ pub enum DynCmd {
     SetNormal(Vector),
     SetScale(Vector),
     SetRotation(Vector),
+    SetHeaderFlag(u32),
     Jump(Ptr),
     MakeObj(DObjType, DynId),
     StartGroup(DynId),
@@ -96,6 +97,7 @@ impl DynCmd {
             4  => SetNormal(cmd[3..6].into()),
             5  => SetScale(cmd[3..6].into()),
             6  => SetRotation(cmd[3..6].into()),
+            7  => SetHeaderFlag(cmd[2]),
             12 => Jump(Ptr(cmd[1])),
             15 => MakeObj(cmd[2].into(), DynId(cmd[1])),
             16 => StartGroup(DynId(cmd[1])),
@@ -116,6 +118,7 @@ impl DynCmd {
             SetNormal(Vector::ZERO),
             SetScale(Vector::ZERO),
             SetRotation(Vector::ZERO),
+            SetHeaderFlag(0),
         ].into_iter()
         .map(|c| c.info())
     }
@@ -188,6 +191,13 @@ impl DynCmd {
                 objs: O::JOINTS | O::NETS,
                 id: 6,
             },
+            SetHeaderFlag(..) => CmdInfo {
+                base: "SetHeaderFlag",
+                desc: "Set the half-word flag in the header of the current dynobj",
+                kind: Second,
+                objs: O::all(),
+                id: 7,
+            },
             Jump(..) => CmdInfo {
                 base: "JumpToList",
                 desc: "Jump to pointed dynlist. Once that list has finished processing, flow returns to current list.",
@@ -248,6 +258,7 @@ impl fmt::Display for DynCmd {
             SetNormal(vec) => full_vec(f, info.base, vec),
             SetScale(vec) => full_vec(f, info.base, vec),
             SetRotation(vec) => full_vec(f, info.base, vec),
+            SetHeaderFlag(flag) => one_param(f, info.base, flag),
             Jump(dl) => one_param(f, info.base, dl),
             MakeObj(t, id) => two_param(f, info.base, t, id),
             StartGroup(id) => one_param(f, info.base, id),
