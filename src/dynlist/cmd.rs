@@ -76,6 +76,7 @@ pub enum DynCmd {
     SetScale(Vector),
     SetRotation(Vector),
     SetHeaderFlag(u32),
+    SetFlag(u32),
     Jump(Ptr),
     MakeObj(DObjType, DynId),
     StartGroup(DynId),
@@ -98,6 +99,7 @@ impl DynCmd {
             5  => SetScale(cmd[3..6].into()),
             6  => SetRotation(cmd[3..6].into()),
             7  => SetHeaderFlag(cmd[2]),
+            8  => SetFlag(cmd[2]),
             12 => Jump(Ptr(cmd[1])),
             15 => MakeObj(cmd[2].into(), DynId(cmd[1])),
             16 => StartGroup(DynId(cmd[1])),
@@ -119,6 +121,7 @@ impl DynCmd {
             SetScale(Vector::ZERO),
             SetRotation(Vector::ZERO),
             SetHeaderFlag(0),
+            SetFlag(0),
         ].into_iter()
         .map(|c| c.info())
     }
@@ -198,6 +201,13 @@ impl DynCmd {
                 objs: O::all(),
                 id: 7,
             },
+            SetFlag(..) => CmdInfo {
+                base: "SetFlag",
+                desc: "Set the bits in an object specific flag with the provided flag",
+                kind: Second,
+                objs: O::JOINTS | O::BONES | O::NETS | O::CAMERAS | O::VIEWS | O::SHAPES | O::PARTICLES | O::LIGHTS,
+                id: 8,
+            },
             Jump(..) => CmdInfo {
                 base: "JumpToList",
                 desc: "Jump to pointed dynlist. Once that list has finished processing, flow returns to current list.",
@@ -259,6 +269,7 @@ impl fmt::Display for DynCmd {
             SetScale(vec) => full_vec(f, info.base, vec),
             SetRotation(vec) => full_vec(f, info.base, vec),
             SetHeaderFlag(flag) => one_param(f, info.base, flag),
+            SetFlag(flag) => one_param(f, info.base, flag),
             Jump(dl) => one_param(f, info.base, dl),
             MakeObj(t, id) => two_param(f, info.base, t, id),
             StartGroup(id) => one_param(f, info.base, id),

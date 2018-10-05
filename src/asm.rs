@@ -23,8 +23,10 @@ pub fn write_macros<W: Write>(mut w: W) -> Result<(), io::Error> {
     writeln!(w, "\n# DynList Command Macros #\n")?;
     for info in DynCmd::variants() {
         writeln!(w, "# {}", info.desc)?;
-        if !info.objs.is_empty() { 
-            writeln!(w, "# Supported Objs: {}", info.objs); 
+        match (info.objs.is_empty(), info.objs.is_all()) {
+            (false, false) => writeln!(w, "# Supported Objs: {}", info.objs)?,
+            (false, true)  => writeln!(w, "# Supported Objs: all")?,
+            (true, _)      => (),
         }
         write_cmd_macro(&mut w, &info)?;
         write!(w, "\n\n");
