@@ -5,6 +5,9 @@ use dynlist::objs;
 /// This is used by the game as a pointer, so be able to indicate it
 #[derive(Debug)]
 pub struct Ptr(u32);
+impl Ptr {
+    const NULL: Ptr = Ptr(0);
+}
 impl fmt::Display for Ptr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Ptr<{:#010X}>", self.0)
@@ -15,6 +18,9 @@ impl fmt::Display for Ptr {
 /// The weird maybe-int, maybe-char* id type. 
 #[derive(Debug)]
 pub struct DynId(u32);
+impl DynId {
+    const NULL: DynId = DynId(0);
+}
 impl fmt::Display for DynId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ID<{:#X}>", self.0)
@@ -50,7 +56,8 @@ pub enum DynArg {
     Both,
     SwapBoth,
     VecXYZ,
-    Vector,
+    VecX,
+    VecPtr,
 }
 
 /// Printing info for all commands
@@ -77,10 +84,27 @@ pub enum DynCmd {
     SetRotation(Vector),
     SetHeaderFlag(u32),
     SetFlag(u32),
+    ClearFlag(u32),
+    SetFriction(Vector),
+    SetSpring(f32),
+    SetColourNum(u32),  // TODO: ennumerate?
     Jump(Ptr),
     MakeObj(DObjType, DynId),
     StartGroup(DynId),
     EndGroup(DynId),
+    AddToGroup(DynId),
+    SetType(u32),
+    SetMtlGroup(DynId),
+    SetNodeGroup(DynId),
+    SetSkinShape(DynId),
+    SetPlaneGroup(DynId),
+    SetShpPtrPtr(Ptr),
+    SetShpPtr(DynId),
+    SetShpOff(Vector),
+    SetCoG(Vector),
+    LinkWith(DynId),
+    LinkWithPtr(Ptr),
+    UseObj(DynId),
     Known(u32),
     Unk(u32),
 }
@@ -100,10 +124,28 @@ impl DynCmd {
             6  => SetRotation(cmd[3..6].into()),
             7  => SetHeaderFlag(cmd[2]),
             8  => SetFlag(cmd[2]),
+            9  => ClearFlag(cmd[2]),
+            10 => SetFriction(cmd[3..6].into()),
+            11 => SetSpring(f32::from_bits(cmd[3])),
             12 => Jump(Ptr(cmd[1])),
+            13 => SetColourNum(cmd[2]),
+            // No 14
             15 => MakeObj(cmd[2].into(), DynId(cmd[1])),
             16 => StartGroup(DynId(cmd[1])),
             17 => EndGroup(DynId(cmd[1])),
+            18 => AddToGroup(DynId(cmd[1])),
+            19 => SetType(cmd[2]),
+            20 => SetMtlGroup(DynId(cmd[1])),
+            21 => SetNodeGroup(DynId(cmd[1])),
+            22 => SetSkinShape(DynId(cmd[1])),
+            23 => SetPlaneGroup(DynId(cmd[1])),
+            24 => SetShpPtrPtr(Ptr(cmd[1])),
+            25 => SetShpPtr(DynId(cmd[1])),
+            26 => SetShpOff(cmd[3..6].into()),
+            27 => SetCoG(cmd[3..6].into()),
+            28 => LinkWith(DynId(cmd[1])),
+            29 => LinkWithPtr(Ptr(cmd[1])),
+            30 => UseObj(DynId(cmd[1])),
             k @ 0...58 => Known(k),
             u @ _ => Unk(u),
         }
@@ -122,6 +164,27 @@ impl DynCmd {
             SetRotation(Vector::ZERO),
             SetHeaderFlag(0),
             SetFlag(0),
+            ClearFlag(0),
+            SetFriction(Vector::ZERO),
+            SetSpring(0.0),
+            Jump(Ptr::NULL),
+            SetColourNum(0),
+            MakeObj(DObjType::D_NET, DynId::NULL),
+            StartGroup(DynId::NULL),
+            EndGroup(DynId::NULL),
+            AddToGroup(DynId::NULL),
+            SetType(0),
+            SetMtlGroup(DynId:: NULL),
+            SetNodeGroup(DynId:: NULL),
+            SetSkinShape(DynId:: NULL),
+            SetPlaneGroup(DynId:: NULL),
+            SetShpPtrPtr(Ptr::NULL),
+            SetShpPtr(DynId:: NULL),
+            SetShpOff(Vector::ZERO),
+            SetCoG(Vector::ZERO),
+            LinkWith(DynId::NULL),
+            LinkWithPtr(Ptr::NULL),
+            UseObj(DynId::NULL),
         ].into_iter()
         .map(|c| c.info())
     }
@@ -208,12 +271,40 @@ impl DynCmd {
                 objs: O::JOINTS | O::BONES | O::NETS | O::CAMERAS | O::VIEWS | O::SHAPES | O::PARTICLES | O::LIGHTS,
                 id: 8,
             },
+            ClearFlag(..) => CmdInfo {
+                base: "ClearFlag",
+                desc: "Clear the bits in an object specific flag with the provided flag",
+                kind: Second,
+                objs: O::JOINTS | O::BONES | O::NETS | O::CAMERAS | O::PARTICLES,
+                id: 9,
+            },
+            SetFriction(..) => CmdInfo {
+                base: "SetFriction",
+                desc: "Set the friction vector of a Joint",
+                kind: VecXYZ,
+                objs: O::JOINTS,
+                id: 10,
+            },
+            SetSpring(..) => CmdInfo {
+                base: "SetSpring",
+                desc: "Set the spring float of a Bone",
+                kind: VecX,
+                objs: O::BONES,
+                id: 11,
+            },
             Jump(..) => CmdInfo {
                 base: "JumpToList",
                 desc: "Jump to pointed dynlist. Once that list has finished processing, flow returns to current list.",
                 kind: First,
                 objs: O::empty(),
                 id: 12,
+            },
+            SetColourNum(..) => CmdInfo {
+                base: "SetColourNum",
+                desc: "Store either the enumerated \"colour\" number in an object, or the RGB float values the number refers to",
+                kind: Second,
+                objs: O::JOINTS | O::PARTICLES | O::NETS | O::GADGETS | O::FACES,
+                id: 13,
             },
             MakeObj(..) => CmdInfo {
                 base: "MakeDynObj",
@@ -231,10 +322,101 @@ impl DynCmd {
             },
             EndGroup(..) => CmdInfo {
                 base: "EndGroup",
-                desc: "Collect all objects created after the StartGroup command.",
+                desc: "Collect all objects created after the StartGroup command with the same id.",
                 kind: First,
                 objs: O::GROUPS,
                 id: 17,
+            },
+            AddToGroup(..) => CmdInfo {
+                base: "AddToGroup",
+                desc: "Add the current dyn object to the Group with the called ID",
+                kind: First,
+                objs: O::GROUPS,
+                id: 18,
+            },
+            SetType(..) => CmdInfo {
+                base: "SetType",
+                desc: "Set an object specific type flag.",
+                kind: Second,
+                objs: O::NETS | O::GADGETS | O::GROUPS | O::JOINTS | O::PARTICLES | O::MATERIALS,
+                id: 19,
+            },
+            SetMtlGroup(..) => CmdInfo {
+                base: "SetMaterialGroup",
+                desc: "Assign the material Group ID to the current dynobj Shape and check the Shape",
+                kind: First,
+                objs: O::SHAPES,
+                id: 20,
+            },
+            SetNodeGroup(..) => CmdInfo {
+                base: "SetNodeGroup",
+                desc: "Attach Group ID to the current dynobj",
+                kind: First,
+                objs: O::NETS | O::SHAPES | O::GADGETS | O::ANIMATORS,
+                id: 21,
+            },
+            SetSkinShape(..) => CmdInfo {
+                base: "SetSkinShape",
+                desc: "Set the skin group of the current Net dynobj with the vertices from Shape ID",
+                kind: First,
+                objs: O::NETS,
+                id: 22,
+            },
+            SetPlaneGroup(..) => CmdInfo {
+                base: "SetPlaneGroup",
+                desc: "Set the plane group ID of the current dynobj",
+                kind: First,
+                objs: O::NETS | O::SHAPES,
+                id: 23,
+            },
+            SetShpPtrPtr(..) => CmdInfo {
+                base: "SetShapePtrPtr",
+                desc: "Set the current dynobj's shape pointer by dereferencing the ptr ptr",
+                kind: First,
+                objs: O::JOINTS | O::NETS | O::BONES | O::GADGETS | O::PARTICLES | O::LIGHTS,
+                id: 24,
+            },
+            SetShpPtr(..) => CmdInfo {
+                base: "SetShapePtr",
+                desc: "Set the current dynobj's shape pointer to Shape ID",
+                kind: First,
+                objs: O::JOINTS | O::NETS | O::BONES | O::GADGETS | O::PARTICLES,
+                id: 25,
+            },
+            SetShpOff(..) => CmdInfo {
+                base: "SetShapeOffset",
+                desc: "Set offset of the connected shape",
+                kind: VecXYZ,
+                objs: O::JOINTS,
+                id: 26,
+            },
+            SetCoG(..) => CmdInfo {
+                base: "SetCenterOfGravity",
+                desc: "Set the center of gravity of the current Net object",
+                kind: VecXYZ,
+                objs: O::NETS,
+                id: 27,
+            },
+            LinkWith(..) => CmdInfo {
+                base: "LinkWith",
+                desc: "Link Object ID to the current dynobj",
+                kind: First,
+                objs: O::CAMERAS | O::GROUPS | O::BONES | O::VIEWS | O::FACES | O::ANIMATORS | O::LABELS,
+                id: 28,
+            },
+            LinkWithPtr(..) => CmdInfo {
+                base: "LinkWithPtr",
+                desc: "Link Object pointer to the current dynobj",
+                kind: First,
+                objs: O::CAMERAS | O::GROUPS | O::BONES | O::VIEWS | O::FACES | O::ANIMATORS | O::LABELS,
+                id: 29,
+            },
+            UseObj(..) => CmdInfo {
+                base: "UseObj",
+                desc: "Set Object ID as the current dynobj",
+                kind: First,
+                objs: O::all(),
+                id: 30,
             },
             Known(id) => CmdInfo {
                 base: "Known",
@@ -258,22 +440,40 @@ impl fmt::Display for DynCmd {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::DynCmd::*;
         let info = self.info();
+        let n = info.base;
         match self {
-            Start => void_macro(f, info.base),
-            Stop => void_macro(f, info.base),
-            UseIntId(b) => one_param(f, info.base, if *b {"TRUE"} else {"FALSE"}),
-            SetInitPos(vec) => full_vec(f, info.base, vec),
-            SetRelPos(vec) => full_vec(f, info.base, vec),
-            SetWorldPos(vec) => full_vec(f, info.base, vec),
-            SetNormal(vec) => full_vec(f, info.base, vec),
-            SetScale(vec) => full_vec(f, info.base, vec),
-            SetRotation(vec) => full_vec(f, info.base, vec),
-            SetHeaderFlag(flag) => one_param(f, info.base, flag),
-            SetFlag(flag) => one_param(f, info.base, flag),
-            Jump(dl) => one_param(f, info.base, dl),
-            MakeObj(t, id) => two_param(f, info.base, t, id),
-            StartGroup(id) => one_param(f, info.base, id),
-            EndGroup(id) => one_param(f, info.base, id),
+            Start => void_macro(f, n),
+            Stop => void_macro(f, n),
+            UseIntId(b) => one_param(f, n, if *b {"TRUE"} else {"FALSE"}),
+            SetInitPos(vec) => full_vec(f, n, vec),
+            SetRelPos(vec) => full_vec(f, n, vec),
+            SetWorldPos(vec) => full_vec(f, n, vec),
+            SetNormal(vec) => full_vec(f, n, vec),
+            SetScale(vec) => full_vec(f, n, vec),
+            SetRotation(vec) => full_vec(f, n, vec),
+            SetHeaderFlag(flag) => one_param_hex(f, n, flag),
+            SetFlag(flag) => one_param_hex(f, n, flag),
+            ClearFlag(flag) => one_param_hex(f, n, flag),
+            SetFriction(vec) => full_vec(f, n, vec),
+            SetSpring(spring) => one_param(f, n, spring),   // might have to make a one_param_d() for the float debug...
+            Jump(dl) => one_param(f, n, dl),
+            SetColourNum(num) => one_param(f, n, num),
+            MakeObj(t, id) => two_param(f, n, t, id),
+            StartGroup(id) => one_param(f, n, id),
+            EndGroup(id) => one_param(f, n, id),
+            AddToGroup(id) => one_param(f, n, id),
+            SetType(flag) => one_param(f, n, flag),
+            SetMtlGroup(id) => one_param(f, n, id),
+            SetNodeGroup(id) => one_param(f, n, id),
+            SetSkinShape(id) => one_param(f, n, id),
+            SetPlaneGroup(id) => one_param(f, n, id),
+            SetShpPtrPtr(dblptr) => one_param(f, n, dblptr),
+            SetShpPtr(id) => one_param(f, n, id),
+            SetShpOff(vec) => full_vec(f, n, vec),
+            SetCoG(vec) => full_vec(f, n, vec),
+            LinkWith(id) => one_param(f, n, id),
+            LinkWithPtr(ptr) => one_param(f, n, ptr),
+            UseObj(id) => one_param(f, n, id),
             Known(cmd) => write!(f, "Known cmd <{}>", cmd),
             Unk(val) => write!(f, "Unknown cmd <{}>", val),
         }
@@ -288,6 +488,12 @@ fn void_macro(f: &mut fmt::Formatter, name: &str) -> fmt::Result {
 #[inline]
 fn one_param<D: fmt::Display> (f: &mut fmt::Formatter, name: &str, param: D) -> fmt::Result {
     write!(f, "{} {}", name, param)
+}
+#[inline]
+fn one_param_hex<D> (f: &mut fmt::Formatter, name: &str, param: D) -> fmt::Result 
+    where D: fmt::Display + fmt::LowerHex
+{
+    write!(f, "{} {:#x}", name, param)
 }
 #[inline]
 fn two_param<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, p2: E) -> fmt::Result 

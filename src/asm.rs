@@ -72,9 +72,14 @@ r#".macro {} w1, w2
     {} {}, \w2, \w1
 .endm"#, cmd.base, BASEMAC, cmd.id), 
 
-        VecXYZ | Vector  => write!(w,
+        VecXYZ | VecPtr  => write!(w,
 r#".macro {} x, y, z
     {} {},,, \x, \y, \z
+.endm"#, cmd.base, BASEMAC, cmd.id), 
+
+        VecX  => write!(w,
+r#".macro {} x
+    {} {},,, \x
 .endm"#, cmd.base, BASEMAC, cmd.id), 
     }
 }
