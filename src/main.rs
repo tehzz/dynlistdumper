@@ -68,41 +68,36 @@ fn run(opts: Opts) -> Result<(),Error> {
 fn dump_dynlist(opts: Dump) -> Result<(), Error> {
     let f = File::open(opts.input).context("opening input binary file")?;
     let rdr = BufReader::new(f);
-
     let offset = opts.offset.as_ref()
         .map(hex_or_dec)
         .unwrap_or(Ok(0))
         .context("parsing offset into integer")?;
     let dynlist = DynListIter::from_reader(rdr, offset).context("generating dynlist iterator")?;
+    let mut wtr = get_file_or_stdout(opts.output).context("opening output file")?;
 
-    for (i, cmd) in dynlist.enumerate() {
-        let cmd = cmd.context("reading command from dynlist iterator")?;
-        if opts.raw {
-            println!("cmd {}: {:x?}", i, &cmd);
-        } else {
-            println!("cmd {}: {}", i, &cmd);
+    if opts.raw {
+        writeln!(wtr, "Starting RAW dynlist dump")?;
+
+        for (i, cmd) in dynlist.enumerate() {
+            let cmd = cmd.context("reading command from dynlist iterator")?;
+            writeln!(wtr, "cmd {}: {:x?}", i, &cmd)?;
+            if cmd.is_unk() { bail!("unknown dynlist command..?") }; 
         }
-        if cmd.is_unk() { bail!("unknown dynlist command..?") }; 
+
+        writeln!(wtr, "Finished RAW dynlist dump")?;
+    } else {
+        for cmd in dynlist {
+            let cmd = cmd.context("reading command from dynlist iterator")?;
+            writeln!(wtr, "{}", &cmd)?;
+            if cmd.is_unk() { bail!("unknown dynlist command..?") }; 
+        }
     }
-    
-    println!("Finished reading list");
+
     Ok(())
 }
 
 fn produce_asm_macros(out: Option<PathBuf>) -> Result<(), Error> {
-    let wtr = BufWriter::new(
-        if let Some(f) = out {
-            let f = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(f)?;
-            Box::new(f) as Box<Write>
-        } else {
-            Box::new(io::stdout()) as Box<Write>
-        }
-    );
-    
+    let wtr = get_file_or_stdout(out).context("opening output file")?;
     asm::write_macros(wtr)?;
     Ok(())
 }
@@ -118,4 +113,20 @@ fn hex_or_dec<S>(n: S) -> Result<u64, ParseIntError>
     } else { 
         u64::from_str_radix(n, 10)
     }
+}
+
+fn get_file_or_stdout(out: Option<PathBuf>) -> Result<BufWriter<Box<Write>>, io::Error> {
+    let wtr = BufWriter::new(
+        if let Some(f) = out {
+            let f = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(f)?;
+            Box::new(f) as Box<Write>
+        } else {
+            Box::new(io::stdout()) as Box<Write>
+        }
+    );
+    Ok(wtr)
 }
