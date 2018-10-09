@@ -4,10 +4,12 @@ use std::fmt;
 
 mod cmd;
 mod dobj_types;
+mod param_ptr;
 mod objs;
 pub use self::cmd::{DynCmd, CmdInfo, DynArg};
 pub use self::dobj_types::DObjType;
 pub use self::objs::ObjFlag;
+pub use self::param_ptr::PtrParam;
 
 #[derive(Debug)]
 pub struct DynListItem  {

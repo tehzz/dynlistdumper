@@ -1,5 +1,6 @@
 use std::fmt;
 use dynlist::dobj_types::DObjType;
+use dynlist::param_ptr::PtrParam;
 use dynlist::objs;
 
 /// This is used by the game as a pointer, so be able to indicate it
@@ -10,7 +11,11 @@ impl Ptr {
 }
 impl fmt::Display for Ptr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Ptr<{:#010X}>", self.0)
+        if self.0 != 0 {
+            write!(f, "Ptr<{:#010X}>", self.0)
+        } else {
+            write!(f, "NULL")
+        }
     }
 }
 
@@ -58,6 +63,7 @@ pub enum DynArg {
     VecXYZ,
     VecX,
     VecPtr,
+    SecVecX,
 }
 
 /// Printing info for all commands
@@ -105,6 +111,20 @@ pub enum DynCmd {
     LinkWith(DynId),
     LinkWithPtr(Ptr),
     UseObj(DynId),
+    SetCtrlType(u32),
+    SetSkinWgt(u32, f32),
+    SetAmbient(Vector),
+    SetDiffuse(Vector),
+    SetId(u32),
+    SetMtl(Ptr, u32),
+    MapMtls(DynId),
+    MapVtx(DynId),
+    Attach(DynId),
+    AttachTo(u32, DynId),
+    SetAttOff(Vector),
+    CpyStrId(Ptr),
+    ParamF(u32, f32),
+    ParamPtr(PtrParam, Ptr),
     Known(u32),
     Unk(u32),
 }
@@ -129,7 +149,7 @@ impl DynCmd {
             11 => SetSpring(f32::from_bits(cmd[3])),
             12 => Jump(Ptr(cmd[1])),
             13 => SetColourNum(cmd[2]),
-            // No 14
+            // missing 14
             15 => MakeObj(cmd[2].into(), DynId(cmd[1])),
             16 => StartGroup(DynId(cmd[1])),
             17 => EndGroup(DynId(cmd[1])),
@@ -146,6 +166,22 @@ impl DynCmd {
             28 => LinkWith(DynId(cmd[1])),
             29 => LinkWithPtr(Ptr(cmd[1])),
             30 => UseObj(DynId(cmd[1])),
+            31 => SetCtrlType(cmd[2]),
+            32 => SetSkinWgt(cmd[2], f32::from_bits(cmd[3])),
+            33 => SetAmbient(cmd[3..6].into()),
+            34 => SetDiffuse(cmd[3..6].into()),
+            35 => SetId(cmd[2]),
+            36 => SetMtl(Ptr(cmd[1]), cmd[2]),
+            37 => MapMtls(DynId(cmd[1])),
+            38 => MapVtx(DynId(cmd[1])),
+            39 => Attach(DynId(cmd[1])),
+            40 => AttachTo(cmd[2], DynId(cmd[1])),
+            41 => SetAttOff(cmd[3..6].into()),
+            // missing 42
+            43 => CpyStrId(Ptr(cmd[1])),
+            44 => ParamF(cmd[2], f32::from_bits(cmd[3])),
+            45 => ParamPtr(cmd[2].into(), Ptr(cmd[1])),
+
             k @ 0...58 => Known(k),
             u @ _ => Unk(u),
         }
@@ -185,6 +221,20 @@ impl DynCmd {
             LinkWith(DynId::NULL),
             LinkWithPtr(Ptr::NULL),
             UseObj(DynId::NULL),
+            SetCtrlType(0),
+            SetSkinWgt(0, 0.0),
+            SetAmbient(Vector::ZERO),
+            SetDiffuse(Vector::ZERO),
+            SetId(0),
+            SetMtl(Ptr::NULL, 0),
+            MapMtls(DynId::NULL),
+            MapVtx(DynId::NULL),
+            Attach(DynId::NULL),
+            AttachTo(0, DynId::NULL),
+            SetAttOff(Vector::ZERO),
+            CpyStrId(Ptr::NULL),
+            ParamF(0, 0.0),
+            ParamPtr(PtrParam::PARAM_OBJ_VTX,Ptr::NULL),
         ].into_iter()
         .map(|c| c.info())
     }
@@ -418,6 +468,104 @@ impl DynCmd {
                 objs: O::all(),
                 id: 30,
             },
+            SetCtrlType(..) => CmdInfo {
+                base: "SetControlType",
+                desc: "Set the current Net object's control type field",
+                kind: Second,
+                objs: O::NETS,
+                id: 31,
+            },
+            SetSkinWgt(..) => CmdInfo {
+                base: "SetSkinWeight",
+                desc: "Set the weight of the current Joint object with ID and VALUE",
+                kind: SecVecX,
+                objs: O::JOINTS,
+                id: 32,
+            },
+            SetAmbient(..) => CmdInfo {
+                base: "SetAmbient",
+                desc: "Set the ambient color of the current Material object",
+                kind: VecXYZ,
+                objs: O::MATERIALS,
+                id: 33,
+            },
+            SetDiffuse(..) => CmdInfo {
+                base: "SetDiffuse",
+                desc: "Set the diffuse color of the current Material or Light object",
+                kind: VecXYZ,
+                objs: O::MATERIALS | O::LIGHTS,
+                id: 34,
+            },
+            SetId(..) => CmdInfo {
+                base: "SetId",
+                desc: "Set the numerical Object ID field (not dynobj id)",
+                kind: Second,
+                objs: O::MATERIALS | O::LIGHTS | O::VERTICES | O::JOINTS,
+                id: 35,
+            },
+            SetMtl(..) => CmdInfo {
+                base: "SetMaterial",
+                desc: "Set the material id of the current Face",
+                kind: Both,
+                objs: O::FACES,
+                id: 36,
+            },
+            MapMtls(..) => CmdInfo {
+                base: "MapMaterials",
+                desc: "Map Materials from Group ID to the current Group obj",
+                kind: First,
+                objs: O::GROUPS,
+                id: 37,
+            },
+            MapVtx(..) => CmdInfo {
+                base: "MapVertices",
+                desc: "Map vertices from Group ID to the current Group obj",
+                kind: First,
+                objs: O::GROUPS,
+                id: 38,
+            },
+            Attach(..) => CmdInfo {
+                base: "Attach",
+                desc: "Stub command",
+                kind: First,
+                objs: O::JOINTS,
+                id: 39,
+            },
+            AttachTo(..) => CmdInfo {
+                base: "AttachTo",
+                desc: "Attach the current dynobj with modifications made by FLAG to Object ID",
+                kind: SwapBoth,
+                objs: O::JOINTS | O::NETS | O::PARTICLES | O::ANIMATORS,
+                id: 40,
+            },
+            SetAttOff(..) => CmdInfo {
+                base: "SetAttachOffset",
+                desc: "Set the offset of the attached object for the current dynobj",
+                kind: VecPtr,
+                objs: O::JOINTS | O::NETS | O::PARTICLES,
+                id: 41,
+            }, 
+            CpyStrId(..) => CmdInfo {
+                base: "CopyStrToIdBuf",
+                desc: "Copy the C-string pointed to by PTR to the dynobj id buf",
+                kind: First,
+                objs: O::empty(),
+                id: 43,
+            }, 
+            ParamF(..) => CmdInfo {
+                base: "SetParamF",
+                desc: "Set float paramter PARAM to VALUE. TODO: Ennumerate parameters",
+                kind: SecVecX,
+                objs: O::SHAPES | O::GADGETS | O::VERTICES,
+                id: 44,
+            }, 
+            ParamPtr(..) => CmdInfo {
+                base: "SetParamPtr",
+                desc: "Set pointer paramter PARAM to PTR",
+                kind: SwapBoth,
+                objs: O::LABELS | O::VIEWS | O::FACES,
+                id: 45,
+            }, 
             Known(id) => CmdInfo {
                 base: "Known",
                 desc: "Filler until all commands are known.",
@@ -474,6 +622,20 @@ impl fmt::Display for DynCmd {
             LinkWith(id) => one_param(f, n, id),
             LinkWithPtr(ptr) => one_param(f, n, ptr),
             UseObj(id) => one_param(f, n, id),
+            SetCtrlType(ctrl) => one_param(f, n, ctrl),
+            SetSkinWgt(id, val) => one_and_one(f, n, id, val),
+            SetAmbient(rbg) => full_vec(f, n, rbg),
+            SetDiffuse(rbg) => full_vec(f, n, rbg),
+            SetId(id) => one_param(f, n, id),
+            SetMtl(unused, id) => two_param(f, n, unused, id),
+            MapMtls(id) => one_param(f, n, id),
+            MapVtx(id) => one_param(f, n, id),
+            Attach(id) => one_param(f, n, id),
+            AttachTo(flag, id) => hex_and_int(f, n, flag, id),
+            SetAttOff(vec) => full_vec(f, n, vec),
+            CpyStrId(ptr) => one_param(f, n, ptr),
+            ParamF(param, fl) => one_and_one(f, n, param, fl),
+            ParamPtr(param, ptr) => two_param(f, n, param, ptr),
             Known(cmd) => write!(f, "Known cmd <{}>", cmd),
             Unk(val) => write!(f, "Unknown cmd <{}>", val),
         }
@@ -496,10 +658,22 @@ fn one_param_hex<D> (f: &mut fmt::Formatter, name: &str, param: D) -> fmt::Resul
     write!(f, "{} {:#x}", name, param)
 }
 #[inline]
+fn one_and_one<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, fl: E) -> fmt::Result 
+    where D: fmt::Display, E: fmt::Debug
+{
+    write!(f, "{} {}, {:?}", name, p1, fl)
+}
+#[inline]
 fn two_param<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, p2: E) -> fmt::Result 
     where D: fmt::Display, E: fmt::Display
 {
     write!(f, "{} {}, {}", name, p1, p2)
+}
+#[inline]
+fn hex_and_int<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, p2: E) -> fmt::Result 
+    where D: fmt::Display + fmt::LowerHex, E: fmt::Display
+{
+    write!(f, "{} {:#x}, {}", name, p1, p2)
 }
 #[inline]
 fn full_vec(f: &mut fmt::Formatter, name: &str, vec: &Vector) -> fmt::Result {

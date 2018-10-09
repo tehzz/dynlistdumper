@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use dynlist::{DynCmd, CmdInfo, DynArg, DObjType};
+use dynlist::{DynCmd, CmdInfo, DynArg, DObjType, PtrParam};
 
 const PRELUDE: &'static str = r#"# DynList GNU AS Macros
 # Bool Types
@@ -20,6 +20,8 @@ const BASEMAC: &'static str = "DynListCmd";
 pub fn write_macros<W: Write>(mut w: W) -> Result<(), io::Error> {
     writeln!(w, "{}", PRELUDE)?;
     write_dobj_constants(&mut w)?;
+    writeln!(w, "")?;
+    write_ptrparam_constants(&mut w)?;
     writeln!(w, "\n# DynList Command Macros #\n")?;
     for info in DynCmd::variants() {
         writeln!(w, "# {}", info.desc)?;
@@ -36,10 +38,21 @@ pub fn write_macros<W: Write>(mut w: W) -> Result<(), io::Error> {
 }
 
 /// Hacky function to write all 19 of the dyn object type enum
+#[inline]
 fn write_dobj_constants<W: Write>(w: &mut W) -> Result<(), io::Error> {
     writeln!(w, "# Object type constants for dynlist make object command")?;
     for (val, constant) in DObjType::iter().enumerate() {
         writeln!(w, ".set {}, {}", constant, val)?;
+    }
+    Ok(())
+}
+
+/// Used for the SetParamPtr command
+#[inline]
+fn write_ptrparam_constants<W: Write>(w: &mut W) -> Result<(), io::Error> {
+    writeln!(w, "# Paramters that can be set by SetParamPtr command")?;
+    for (val, param) in PtrParam::iter().enumerate() {
+        writeln!(w, ".set {}, {}", param, val)?;
     }
     Ok(())
 }
@@ -80,6 +93,11 @@ r#".macro {} x, y, z
         VecX  => write!(w,
 r#".macro {} x
     {} {},,, \x
+.endm"#, cmd.base, BASEMAC, cmd.id), 
+
+        SecVecX  => write!(w,
+r#".macro {} w2, x
+    {} {},, \w2, \x
 .endm"#, cmd.base, BASEMAC, cmd.id), 
     }
 }
