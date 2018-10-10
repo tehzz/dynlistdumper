@@ -95,9 +95,19 @@ r#".macro {} x
     {} {},,, \x
 .endm"#, cmd.base, BASEMAC, cmd.id), 
 
+        VecXY  => write!(w,
+r#".macro {} x, y
+    {} {},,, \x, \y
+.endm"#, cmd.base, BASEMAC, cmd.id), 
+
         SecVecX  => write!(w,
 r#".macro {} w2, x
     {} {},, \w2, \x
+.endm"#, cmd.base, BASEMAC, cmd.id), 
+
+        ValPtr  => write!(w,
+r#".macro {} id, flags, type, offset
+    {} {}, \id, \type, \offset, \flags
 .endm"#, cmd.base, BASEMAC, cmd.id), 
     }
 }
