@@ -238,7 +238,7 @@ impl DynCmd {
         .map(|c| c.info())
     }
     /// Basic info for a command
-    fn info(&self) -> CmdInfo {
+    pub fn info(&self) -> CmdInfo {
         use self::DynCmd::*;
         use self::DynArg::*;
         use self::objs::ObjFlag as O;

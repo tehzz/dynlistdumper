@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::io::{self, BufReader, BufWriter, Write};
 use std::fs::{File, OpenOptions};
 use std::num::ParseIntError;
+use std::collections::HashMap;
 
 /// A tool to help dump a binary SM64 head screen dynlist into a set of asm macros
 #[derive(Debug, StructOpt)]
@@ -43,6 +44,9 @@ struct Dump {
     /// print out the raw values of cmd as a comment
     #[structopt(short = "r", long = "raw-values")]
     raw: bool,
+    /// print info about a list, rather than dumping the bytes
+    #[structopt(short = "i", long = "info")]
+    info: bool,
 }
 
 fn main() {
@@ -74,6 +78,25 @@ fn dump_dynlist(opts: Dump) -> Result<(), Error> {
         .context("parsing offset into integer")?;
     let dynlist = DynListIter::from_reader(rdr, offset).context("generating dynlist iterator")?;
     let mut wtr = get_file_or_stdout(opts.output).context("opening output file")?;
+
+    if opts.info {
+        let (info, count) = dynlist.fold((HashMap::new(), 0u64), 
+        |(mut map, c), cmd| {
+            let cmd = cmd.expect("summarizing list");
+            let c = c + 1;
+            *map.entry(cmd.info().base).or_insert(0) += 1;
+            (map, c)
+        });
+        writeln!(wtr, "Dynlist @ {:#X}", offset)?;
+        writeln!(wtr, "Total Commands: {}", count)?;
+        writeln!(wtr, "Total Size: {:#x} bytes", count * 6 * 4)?;
+        writeln!(wtr, "\nCommand Summary:")?;
+        for (cmd, num) in info.iter() {
+            writeln!(wtr, "{} : {}", cmd, num)?;
+        }
+
+        return Ok(());
+    }
 
     if opts.raw {
         writeln!(wtr, "Starting RAW dynlist dump")?;

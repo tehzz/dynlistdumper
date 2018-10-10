@@ -42,6 +42,9 @@ impl DynListItem  {
             _ => false,
         }
     }
+    pub fn info(&self) -> CmdInfo {
+        self.cmd.info()
+    }
 }
 
 pub struct DynListIter<R> {
