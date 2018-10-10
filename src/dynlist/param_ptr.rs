@@ -11,8 +11,11 @@ pub enum PtrParam {
 impl PtrParam {
     const TOTAL: usize = 2;
 
-    pub fn iter() -> Iter<'static, PtrParam> {
-        static VARIANTS: [PtrParam; PtrParam::TOTAL] = [PtrParam::PARAM_OBJ_VTX, PtrParam::PARAM_CHAR_PTR];
+    pub fn iter() -> Iter<'static, (PtrParam, u32)> {
+        static VARIANTS: [(PtrParam, u32); PtrParam::TOTAL] = [
+            (PtrParam::PARAM_OBJ_VTX, 1),
+            (PtrParam::PARAM_CHAR_PTR, 5),
+        ];
         VARIANTS.iter()
     }
 }

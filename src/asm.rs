@@ -51,7 +51,7 @@ fn write_dobj_constants<W: Write>(w: &mut W) -> Result<(), io::Error> {
 #[inline]
 fn write_ptrparam_constants<W: Write>(w: &mut W) -> Result<(), io::Error> {
     writeln!(w, "# Paramters that can be set by SetParamPtr command")?;
-    for (val, param) in PtrParam::iter().enumerate() {
+    for (param, val) in PtrParam::iter() {
         writeln!(w, ".set {}, {}", param, val)?;
     }
     Ok(())
