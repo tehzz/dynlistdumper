@@ -22,6 +22,12 @@ impl fmt::Display for DynListItem {
         write!(f, "{}", self.cmd)
     }
 }
+/* C macro printing hack... */
+impl fmt::Binary for DynListItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:b}", self.cmd)
+    }
+}
 
 impl DynListItem  {
     fn from_bytes(buf: &[u8; 24]) -> Self {
@@ -30,7 +36,7 @@ impl DynListItem  {
         let cmd = DynCmd::from_struct(&raw);
         DynListItem {raw, cmd}
     }
-    pub fn is_end(&self) -> bool {
+    fn is_end(&self) -> bool {
         match self.cmd {
             DynCmd::Stop => true,
             _ => false,

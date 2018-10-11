@@ -27,8 +27,8 @@ pub enum DObjType {
 impl DObjType {
     const TOTAL: u32 = 19;
 
-    pub fn iter() -> impl Iterator<Item = DObjType> {
-        (0..DObjType::TOTAL).map(|i| i.into())
+    pub fn iter() -> impl Iterator<Item = (DObjType, u32)> {
+        (0..DObjType::TOTAL).map(|i| (i.into(), i))
     }
 }
 

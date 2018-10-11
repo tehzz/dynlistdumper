@@ -641,113 +641,153 @@ impl DynCmd {
 
 impl fmt::Display for DynCmd {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::DynCmd::*;
-        let info = self.info();
-        let n = info.base;
-        match self {
-            Start                       => void_macro(f, n),
-            Stop                        => void_macro(f, n),
-            UseIntId(b)                 => one_param(f, n, if *b {"TRUE"} else {"FALSE"}),
-            SetInitPos(vec)             => full_vec(f, n, vec),
-            SetRelPos(vec)              => full_vec(f, n, vec),
-            SetWorldPos(vec)            => full_vec(f, n, vec),
-            SetNormal(vec)              => full_vec(f, n, vec),
-            SetScale(vec)               => full_vec(f, n, vec),
-            SetRotation(vec)            => full_vec(f, n, vec),
-            SetHeaderFlag(flag)         => one_param_hex(f, n, flag),
-            SetFlag(flag)               => one_param_hex(f, n, flag),
-            ClearFlag(flag)             => one_param_hex(f, n, flag),
-            SetFriction(vec)            => full_vec(f, n, vec),
-            SetSpring(spring)           => one_param(f, n, spring),   // might have to make a one_param_d() for the float debug...
-            Jump(dl)                    => one_param(f, n, dl),
-            SetColourNum(num)           => one_param(f, n, num),
-            MakeObj(t, id)              => two_param(f, n, t, id),
-            StartGroup(id)              => one_param(f, n, id),
-            EndGroup(id)                => one_param(f, n, id),
-            AddToGroup(id)              => one_param(f, n, id),
-            SetType(flag)               => one_param(f, n, flag),
-            SetMtlGroup(id)             => one_param(f, n, id),
-            SetNodeGroup(id)            => one_param(f, n, id),
-            SetSkinShape(id)            => one_param(f, n, id),
-            SetPlaneGroup(id)           => one_param(f, n, id),
-            SetShpPtrPtr(dblptr)        => one_param(f, n, dblptr),
-            SetShpPtr(id)               => one_param(f, n, id),
-            SetShpOff(vec)              => full_vec(f, n, vec),
-            SetCoG(vec)                 => full_vec(f, n, vec),
-            LinkWith(id)                => one_param(f, n, id),
-            LinkWithPtr(ptr)            => one_param(f, n, ptr),
-            UseObj(id)                  => one_param(f, n, id),
-            SetCtrlType(ctrl)           => one_param(f, n, ctrl),
-            SetSkinWgt(id, val)         => one_and_one(f, n, id, val),
-            SetAmbient(rbg)             => full_vec(f, n, rbg),
-            SetDiffuse(rbg)             => full_vec(f, n, rbg),
-            SetId(id)                   => one_param(f, n, id),
-            SetMtl(unused, id)          => two_param(f, n, unused, id),
-            MapMtls(id)                 => one_param(f, n, id),
-            MapVtx(id)                  => one_param(f, n, id),
-            Attach(id)                  => one_param(f, n, id),
-            AttachTo(flag, id)          => hex_and_int(f, n, flag, id),
-            SetAttOff(vec)              => full_vec(f, n, vec),
-            CpyStrId(ptr)               => one_param(f, n, ptr),
-            ParamF(param, fl)           => one_and_one(f, n, param, fl),
-            ParamPtr(param, ptr)        => two_param(f, n, param, ptr),
-            NetSubGrp(unused, id)       => two_param(f, n, unused, id),
-            AttNetJoint(unused, id)     => two_param(f, n, unused, id),
-            EndNetGrp(id)               => one_param(f, n, id),
-            MakeVtx(vec)                => full_vec(f, n, vec),
-            MakeValPtr(id, fl, kd, off) => val_ptr(f, n, id, *fl, *kd, *off),
-            UseTx(ptr)                  => one_param(f, n, ptr),
-            SetTxST(s,t)                => two_param(f, n, s, t),
-            NetFromId(id)               => one_param(f, n, id),
-            NetFromPtr(ptr)             => one_param(f, n, ptr),
+        fmt_cmd(f, self, MacroT::Gas)
+    }
+}
+impl fmt::Binary for DynCmd {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt_cmd(f, self, MacroT::C)
+    }
+}
 
-            Unk(val) => write!(f, "Unknown cmd <{}>", val),
-        }
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum MacroT {
+    Gas,
+    C,
+}
+
+fn fmt_cmd(f: &mut fmt::Formatter, cmd: &DynCmd, mt: MacroT) -> fmt::Result {
+    use self::DynCmd::*;
+    let info = cmd.info();
+    let n = info.base;
+    match cmd {
+        Start                       => void_macro(f, mt, n),
+        Stop                        => void_macro(f, mt, n),
+        UseIntId(b)                 => one_param(f, mt, n, if *b {"TRUE"} else {"FALSE"}),
+        SetInitPos(vec)             => full_vec(f, mt, n, vec),
+        SetRelPos(vec)              => full_vec(f, mt, n, vec),
+        SetWorldPos(vec)            => full_vec(f, mt, n, vec),
+        SetNormal(vec)              => full_vec(f, mt, n, vec),
+        SetScale(vec)               => full_vec(f, mt, n, vec),
+        SetRotation(vec)            => full_vec(f, mt, n, vec),
+        SetHeaderFlag(flag)         => one_param_hex(f, mt, n, flag),
+        SetFlag(flag)               => one_param_hex(f, mt, n, flag),
+        ClearFlag(flag)             => one_param_hex(f, mt, n, flag),
+        SetFriction(vec)            => full_vec(f, mt, n, vec),
+        SetSpring(spring)           => one_param(f, mt, n, spring),   // might have to make a one_param_d() for the float debug...
+        Jump(dl)                    => one_param(f, mt, n, dl),
+        SetColourNum(num)           => one_param(f, mt, n, num),
+        MakeObj(t, id)              => two_param(f, mt, n, t, id),
+        StartGroup(id)              => one_param(f, mt, n, id),
+        EndGroup(id)                => one_param(f, mt, n, id),
+        AddToGroup(id)              => one_param(f, mt, n, id),
+        SetType(flag)               => one_param(f, mt, n, flag),
+        SetMtlGroup(id)             => one_param(f, mt, n, id),
+        SetNodeGroup(id)            => one_param(f, mt, n, id),
+        SetSkinShape(id)            => one_param(f, mt, n, id),
+        SetPlaneGroup(id)           => one_param(f, mt, n, id),
+        SetShpPtrPtr(dblptr)        => one_param(f, mt, n, dblptr),
+        SetShpPtr(id)               => one_param(f, mt, n, id),
+        SetShpOff(vec)              => full_vec(f, mt, n, vec),
+        SetCoG(vec)                 => full_vec(f, mt, n, vec),
+        LinkWith(id)                => one_param(f, mt, n, id),
+        LinkWithPtr(ptr)            => one_param(f, mt, n, ptr),
+        UseObj(id)                  => one_param(f, mt, n, id),
+        SetCtrlType(ctrl)           => one_param(f, mt, n, ctrl),
+        SetSkinWgt(id, val)         => int_and_hex(f, mt, n, id, val),
+        SetAmbient(rbg)             => full_vec(f, mt, n, rbg),
+        SetDiffuse(rbg)             => full_vec(f, mt, n, rbg),
+        SetId(id)                   => one_param(f, mt, n, id),
+        SetMtl(unused, id)          => two_param(f, mt, n, unused, id),
+        MapMtls(id)                 => one_param(f, mt, n, id),
+        MapVtx(id)                  => one_param(f, mt, n, id),
+        Attach(id)                  => one_param(f, mt, n, id),
+        AttachTo(flag, id)          => hex_and_int(f, mt, n, flag, id),
+        SetAttOff(vec)              => full_vec(f, mt, n, vec),
+        CpyStrId(ptr)               => one_param(f, mt, n, ptr),
+        ParamF(param, fl)           => int_and_hex(f, mt, n, param, fl),
+        ParamPtr(param, ptr)        => two_param(f, mt, n, param, ptr),
+        NetSubGrp(unused, id)       => two_param(f, mt, n, unused, id),
+        AttNetJoint(unused, id)     => two_param(f, mt, n, unused, id),
+        EndNetGrp(id)               => one_param(f, mt, n, id),
+        MakeVtx(vec)                => full_vec(f, mt, n, vec),
+        MakeValPtr(id, fl, kd, off) => val_ptr(f, mt, n, id, *fl, *kd, *off),
+        UseTx(ptr)                  => one_param(f, mt, n, ptr),
+        SetTxST(s,t)                => two_param(f, mt, n, s, t),
+        NetFromId(id)               => one_param(f, mt, n, id),
+        NetFromPtr(ptr)             => one_param(f, mt, n, ptr),
+
+        Unk(val) => write!(f, "Unknown cmd <{}>", val),
     }
 }
 
 /* Helper functions to write a command as a macro */
 #[inline]
-fn void_macro(f: &mut fmt::Formatter, name: &str) -> fmt::Result {
-    write!(f, "{}", name)
+fn void_macro(f: &mut fmt::Formatter, t: MacroT, name: &str) -> fmt::Result {
+    match t {
+        MacroT::Gas => write!(f, "{}", name),
+        MacroT::C   => write!(f, "{}()", name),
+    }
 }
 #[inline]
-fn one_param<D: fmt::Display> (f: &mut fmt::Formatter, name: &str, param: D) -> fmt::Result {
-    write!(f, "{} {}", name, param)
-}
-#[inline]
-fn one_param_hex<D> (f: &mut fmt::Formatter, name: &str, param: D) -> fmt::Result 
-    where D: fmt::Display + fmt::LowerHex
+fn one_param<D> (f: &mut fmt::Formatter, t: MacroT, name: &str, param: D) -> fmt::Result 
+    where D: fmt::Display
 {
-    write!(f, "{} {:#x}", name, param)
+    match t {
+        MacroT::Gas => write!(f, "{} {}", name, param),
+        MacroT::C   => write!(f, "{}({})", name, param),
+    }
 }
 #[inline]
-fn one_and_one<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, fl: E) -> fmt::Result 
-    where D: fmt::Display, E: fmt::Debug
+fn one_param_hex<D> (f: &mut fmt::Formatter, t: MacroT, name: &str, param: D) -> fmt::Result 
+    where D: fmt::LowerHex
 {
-    write!(f, "{} {}, {:?}", name, p1, fl)
+    match t {
+        MacroT::Gas => write!(f, "{} {:#x}", name, param),
+        MacroT::C   => write!(f, "{}({:#x})", name, param),
+    }
 }
 #[inline]
-fn two_param<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, p2: E) -> fmt::Result 
+fn two_param<D, E> (f: &mut fmt::Formatter, t: MacroT, name: &str, p1: D, p2: E) -> fmt::Result 
     where D: fmt::Display, E: fmt::Display
 {
-    write!(f, "{} {}, {}", name, p1, p2)
+    match t {
+        MacroT::Gas => write!(f, "{} {}, {}", name, p1, p2),
+        MacroT::C   => write!(f, "{}({}, {})", name, p1, p2),
+    }
 }
 #[inline]
-fn hex_and_int<D, E> (f: &mut fmt::Formatter, name: &str, p1: D, p2: E) -> fmt::Result 
-    where D: fmt::Display + fmt::LowerHex, E: fmt::Display
+fn int_and_hex<D, E> (f: &mut fmt::Formatter, t: MacroT, name: &str, p1: D, fl: E) -> fmt::Result 
+    where D: fmt::Display, E: fmt::Debug
 {
-    write!(f, "{} {:#x}, {}", name, p1, p2)
+    match t {
+        MacroT::Gas => write!(f, "{} {}, {:?}", name, p1, fl),
+        MacroT::C   => write!(f, "{}({}, {:?})", name, p1, fl),
+    }
 }
 #[inline]
-fn full_vec(f: &mut fmt::Formatter, name: &str, vec: &Vector) -> fmt::Result {
-    write!(f, "{} {:?}, {:?}, {:?}", name, vec.x, vec.y, vec.z)
+fn hex_and_int<D, E> (f: &mut fmt::Formatter, t: MacroT, name: &str, p1: D, p2: E) -> fmt::Result 
+    where D: fmt::LowerHex, E: fmt::Display
+{
+    match t {
+        MacroT::Gas => write!(f, "{} {:#x}, {}", name, p1, p2),
+        MacroT::C   => write!(f, "{}({:#x}, {})", name, p1, p2),
+    }
 }
-
 #[inline]
-/// Yes, the flags are a float... Not in final game code
-fn val_ptr(f: &mut fmt::Formatter, name: &str, id: &DynId, flags: f32, kind: u32, offset: f32)
+fn full_vec(f: &mut fmt::Formatter, t: MacroT, name: &str, vec: &Vector) -> fmt::Result {
+    match t {
+        MacroT::Gas => write!(f, "{} {:?}, {:?}, {:?}", name, vec.x, vec.y, vec.z),
+        MacroT::C   => write!(f, "{}({:?}, {:?}, {:?})", name, vec.x, vec.y, vec.z),
+    }
+}
+#[inline]
+/// Yes, the flags are a float... cmd not present in final game code
+fn val_ptr(f: &mut fmt::Formatter, t: MacroT, name: &str, id: &DynId, flags: f32, kind: u32, offset: f32)
     -> fmt::Result
 {
-    write!(f, "{} {:?} {:?} {} {:?}", name, id, flags, kind, offset)
+    match t {
+        MacroT::Gas => write!(f, "{} {:?} {:?} {} {:?}", name, id, flags, kind, offset),
+        MacroT::C   => write!(f, "{}({:?} {:?} {} {:?})", name, id, flags, kind, offset),
+    }
 }

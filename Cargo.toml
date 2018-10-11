@@ -1,6 +1,6 @@
 [package]
 name = "dynlistdump"
-version = "0.1.0"
+version = "0.9.0"
 authors = ["tehz <tehzz@users.noreply.github.com>"]
 
 [dependencies]

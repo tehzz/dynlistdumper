@@ -41,7 +41,7 @@ pub fn write_macros<W: Write>(mut w: W) -> Result<(), io::Error> {
 #[inline]
 fn write_dobj_constants<W: Write>(w: &mut W) -> Result<(), io::Error> {
     writeln!(w, "# Object type constants for dynlist make object command")?;
-    for (val, constant) in DObjType::iter().enumerate() {
+    for (constant, val) in DObjType::iter() {
         writeln!(w, ".set {}, {}", constant, val)?;
     }
     Ok(())
