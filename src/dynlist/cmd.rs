@@ -11,11 +11,7 @@ impl Ptr {
 }
 impl fmt::Display for Ptr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.0 != 0 {
-            write!(f, "Ptr<{:#010X}>", self.0)
-        } else {
-            write!(f, "NULL")
-        }
+        write!(f, "Ptr<{:#010X}>", self.0)
     }
 }
 

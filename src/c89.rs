@@ -7,7 +7,7 @@ macro_rules! cmd_type_name {
 macro_rules! header_name {
     () => ( "_DYN_LIST_MACROS_H_")
 }
-pub const PREFIX: &'static str = "dyn";
+pub const PREFIX: &'static str = "";
 const IFGUARD_START: &'static str = concat!("#ifndef ", header_name![], "\n#define ", header_name![]);
 const IFGUARD_END: &'static str = concat!("#endif /* ", header_name![], " */");
 const STRUCT_DEC: &'static str = concat!("struct ", cmd_type_name!(), r#" {
@@ -69,22 +69,22 @@ r#"#define {}{}() \
 
         First => writeln!(w,
 r#"#define {}{}(w1) \
-    {{ {}, (w1) }}"#, 
+    {{ {}, (void *)(w1) }}"#, 
             PREFIX, cmd.base, cmd.id),
 
         Second => writeln!(w,
 r#"#define {}{}(w2) \
-    {{ {}, 0, (w2) }}"#, 
+    {{ {}, 0, (void *)(w2) }}"#, 
             PREFIX, cmd.base, cmd.id),
 
         Both => writeln!(w,
 r#"#define {}{}(w1, w2) \
-    {{ {}, (w1), (w2) }}"#, 
+    {{ {}, (void *)(w1), (void *)(w2) }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         SwapBoth => writeln!(w,
 r#"#define {}{}(w2, w1) \
-    {{ {}, (w1), (w2) }}"#, 
+    {{ {}, (void *)(w1), (void *)(w2) }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         VecXYZ | VecPtr  => writeln!(w,
@@ -104,12 +104,12 @@ r#"#define {}{}(x, y) \
 
         SecVecX  => writeln!(w,
 r#"#define {}{}(w2, x) \
-    {{ {}, 0, (w2), (x) }}"#, 
+    {{ {}, 0, (void *)(w2), (x) }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         ValPtr  => writeln!(w,
 r#"#define {}{}(id, flags, type, offset) \
-    {{ {}, (id), (type), (offset), (flags) }}"#, 
+    {{ {}, (void *)(id), (void *)(type), (offset), (flags) }}"#, 
             PREFIX, cmd.base, cmd.id),
     }
 }

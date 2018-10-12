@@ -62,7 +62,7 @@ struct Dump {
 
 fn main() {
     let opts = Opts::from_args();
-    //println!("{:#?}", opts);
+
     if let Err(e) = run(opts) {
         eprintln!("Error: {}", e);
         for c in e.iter_causes() {
