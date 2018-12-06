@@ -99,14 +99,14 @@ fn dump_dynlist(opts: Dump) -> Result<(), Error> {
     }
 }
 
-/// Create a set of GNU AS macros for compiling a dynlist to bytecode
+/// Create a set of GNU AS macros for assemble a dynlist to bytecode
 fn produce_asm_macros(out: Option<PathBuf>) -> Result<(), Error> {
     let wtr = get_file_or_stdout(out).context("opening output file")?;
     asm::write_macros(wtr)?;
     Ok(())
 }
 
-/// Create a C header with 
+/// Create a C header with structs and macros need to compile a dynlist to an array
 fn produce_c_header(out: Option<PathBuf>) -> Result<(), Error> {
     let wtr = get_file_or_stdout(out).context("opening output file")?;
     c89::write_header(wtr)?;
