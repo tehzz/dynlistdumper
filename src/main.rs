@@ -1,6 +1,6 @@
 #[macro_use] extern crate failure;
-#[macro_use] extern crate structopt;
 #[macro_use] extern crate bitflags;
+extern crate structopt;
 extern crate byteorder;
 use structopt::StructOpt;
 use failure::{Error, ResultExt};
@@ -8,13 +8,13 @@ use failure::{Error, ResultExt};
 mod asm;
 mod c89;
 mod dynlist;
+mod dump;
 use dynlist::{DynListIter};
 
 use std::path::PathBuf;
-use std::io::{self, BufReader, BufWriter, Write, Read};
+use std::io::{self, BufReader, BufWriter, Write};
 use std::fs::{File, OpenOptions};
 use std::num::ParseIntError;
-use std::collections::HashMap;
 
 /// A tool to help dump a binary SM64 head screen dynlist into a set of asm macros
 #[derive(Debug, StructOpt)]
@@ -72,7 +72,6 @@ fn main() {
     }
 }
 
-
 fn run(opts: Opts) -> Result<(),Error> {
     match opts {
         Opts::Dump(dump)  => dump_dynlist(dump),
@@ -92,83 +91,22 @@ fn dump_dynlist(opts: Dump) -> Result<(), Error> {
     let wtr = get_file_or_stdout(opts.output).context("opening output file")?;
 
     match (opts.info, opts.raw, opts.c) {
-        (true, false, false)  => get_dynlinst_info(wtr, dynlist, offset),
-        (false, true, false)  => dump_raw(wtr, dynlist),
-        (false, false, true)  => dump_c(wtr, dynlist),
-        (false, false, false) => dump_gas(wtr, dynlist),
+        (true, false, false)  => dump::info(wtr, dynlist, offset),
+        (false, true, false)  => dump::raw(wtr, dynlist),
+        (false, false, true)  => dump::c(wtr, dynlist, offset),
+        (false, false, false) => dump::gas(wtr, dynlist, offset),
         _ => bail!("Illegal combination of dump flags"),
     }
 }
 
-fn get_dynlinst_info<W, R>(mut wtr: W, dynlist: DynListIter<R>, offset: u64) -> Result<(), Error> 
-    where W: Write, R: Read
-{
-    let (info, count) = dynlist.fold( 
-        (HashMap::new(), 0u64), 
-        |(mut map, c), cmd| {
-            let cmd = cmd.expect("processing list for summarization");
-            let c = c + 1;
-            *map.entry(cmd.info().base).or_insert(0) += 1;
-            (map, c)
-        }
-    );
-    writeln!(wtr, "Dynlist @ {:#X}", offset)?;
-    writeln!(wtr, "Total Commands: {}", count)?;
-    writeln!(wtr, "Total Size: {:#x} bytes", count * 6 * 4)?;
-    writeln!(wtr, "\nCommand Summary:")?;
-    for (cmd, num) in info.iter() {
-        writeln!(wtr, "{} : {}", cmd, num)?;
-    }
-    Ok(())
-}
-
-fn dump_raw<W, R>(mut wtr: W, dynlist: DynListIter<R>) -> Result<(), Error> 
-    where W: Write, R: Read
-{
-    writeln!(wtr, "Starting RAW dynlist dump")?;
-    for (i, cmd) in dynlist.enumerate() {
-        let cmd = cmd.context("reading command from dynlist iterator")?;
-        writeln!(wtr, "cmd {}: {:x?}", i, &cmd)?;
-        if cmd.is_unk() { bail!("unknown dynlist command..?") }; 
-    }
-    writeln!(wtr, "Finished RAW dynlist dump")?;
-    Ok(())
-}
-
-fn dump_c<W, R>(mut wtr: W, dynlist: DynListIter<R>) -> Result<(), Error> 
-    where W: Write, R: Read
-{
-    let mut count = 0;
-    let prefix = c89::PREFIX;
-    writeln!(wtr, "[")?;
-    for cmd in dynlist {
-        let cmd = cmd.context("reading command from dynlist iterator")?;
-        writeln!(wtr, "{}{:b},", prefix, cmd)?;
-        if cmd.is_unk() { bail!("unknown dynlist command") };
-        count += 1;
-    }
-    writeln!(wtr, "]")?;
-    writeln!(wtr, "/* Total Commands: {} */", count)?;
-    Ok(())
-}
-
-fn dump_gas<W, R>(mut wtr: W, dynlist: DynListIter<R>) -> Result<(), Error> 
-    where W: Write, R: Read
-{
-    for cmd in dynlist {
-        let cmd = cmd.context("reading command from dynlist iterator")?;
-        writeln!(wtr, "{}", &cmd)?;
-        if cmd.is_unk() { bail!("unknown dynlist command..?") }; 
-    }
-    Ok(())
-}
-
+/// Create a set of GNU AS macros for compiling a dynlist to bytecode
 fn produce_asm_macros(out: Option<PathBuf>) -> Result<(), Error> {
     let wtr = get_file_or_stdout(out).context("opening output file")?;
     asm::write_macros(wtr)?;
     Ok(())
 }
 
+/// Create a C header with 
 fn produce_c_header(out: Option<PathBuf>) -> Result<(), Error> {
     let wtr = get_file_or_stdout(out).context("opening output file")?;
     c89::write_header(wtr)?;

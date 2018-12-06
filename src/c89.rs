@@ -8,13 +8,15 @@ macro_rules! header_name {
     () => ( "_DYN_LIST_MACROS_H_")
 }
 pub const PREFIX: &'static str = "";
+pub const STRUCT_NAME: &'static str = concat!("struct ", cmd_type_name!());
+
 const IFGUARD_START: &'static str = concat!("#ifndef ", header_name![], "\n#define ", header_name![]);
 const IFGUARD_END: &'static str = concat!("#endif /* ", header_name![], " */");
 const STRUCT_DEC: &'static str = concat!("struct ", cmd_type_name!(), r#" {
     int cmd;
     union { void *ptr; int word; } w1;
     union { void *ptr; int word; } w2;
-    float vec[3];
+    struct {float x, y, z; } vec;
 };"#);
 
 pub fn write_header<W: Write>(mut w: W) -> Result<(), io::Error> {
@@ -64,52 +66,52 @@ fn write_cmd_macros<W: Write>(w: &mut W, cmd: &CmdInfo) -> Result<(), io::Error>
     match cmd.kind {
         Void => writeln!(w, 
 r#"#define {}{}() \
-    {{ {} }}"#, 
+    {{ {}, {{0}}, {{0}}, {{0.0, 0.0, 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id),
 
         First => writeln!(w,
 r#"#define {}{}(w1) \
-    {{ {}, (void *)(w1) }}"#, 
+    {{ {}, {{(void *)(w1)}}, {{0}}, {{0.0, 0.0, 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id),
 
         Second => writeln!(w,
 r#"#define {}{}(w2) \
-    {{ {}, 0, (void *)(w2) }}"#, 
+    {{ {}, {{0}}, {{(void *)(w2)}}, {{0.0, 0.0, 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id),
 
         Both => writeln!(w,
 r#"#define {}{}(w1, w2) \
-    {{ {}, (void *)(w1), (void *)(w2) }}"#, 
+    {{ {}, {{(void *)(w1)}}, {{(void *)(w2)}}, {{0.0, 0.0, 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         SwapBoth => writeln!(w,
 r#"#define {}{}(w2, w1) \
-    {{ {}, (void *)(w1), (void *)(w2) }}"#, 
+    {{ {}, {{(void *)(w1)}}, {{(void *)(w2)}}, {{0.0, 0.0, 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         VecXYZ | VecPtr  => writeln!(w,
 r#"#define {}{}(x, y, z) \
-    {{ {}, 0, 0, (x), (y), (z) }}"#, 
+    {{ {}, {{0}}, {{0}}, {{(x), (y), (z)}} }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         VecX  => writeln!(w,
 r#"#define {}{}(x) \
-    {{ {}, 0, 0, (x) }}"#, 
+    {{ {}, {{0}}, {{0}}, {{(x), 0.0, 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id),  
 
         VecXY  => writeln!(w,
 r#"#define {}{}(x, y) \
-    {{ {}, 0, 0, (x), (y) }}"#, 
+    {{ {}, {{0}}, {{0}}, {{(x), (y), 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         SecVecX  => writeln!(w,
 r#"#define {}{}(w2, x) \
-    {{ {}, 0, (void *)(w2), (x) }}"#, 
+    {{ {}, {{0}}, {{(void *)(w2)}}, {{(x), 0.0, 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id), 
 
         ValPtr  => writeln!(w,
 r#"#define {}{}(id, flags, type, offset) \
-    {{ {}, (void *)(id), (void *)(type), (offset), (flags) }}"#, 
+    {{ {}, {{(void *)(id)}}, {{(void *)(type)}}, {{(offset), (flags), 0.0}} }}"#, 
             PREFIX, cmd.base, cmd.id),
     }
 }
